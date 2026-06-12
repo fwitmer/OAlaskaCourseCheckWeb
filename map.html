@@ -807,7 +807,9 @@
 
             if (watchId) {
                 // Stop Tracking
-                navigator.geolocation.clearWatch(watchId);
+                if (navigator.geolocation) {
+                    navigator.geolocation.clearWatch(watchId);
+                }
                 watchId = null;
                 isTracking = false;
 
@@ -827,6 +829,19 @@
                 currentAccuracy = null;
                 currentHeading = null;
             } else {
+                // Check if Geolocation is supported/available (restricted to HTTPS on mobile)
+                if (!navigator.geolocation) {
+                    var isHttp = window.location.protocol === 'http:';
+                    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    
+                    if (isHttp && !isLocal) {
+                        alert("GPS tracking failed: Web browsers block GPS access on insecure HTTP connections.\n\nPlease host this app on a secure HTTPS server (like GitHub Pages or HTTPS WordPress) to enable location features on your mobile phone.");
+                    } else {
+                        alert("GPS tracking failed: Geolocation is not supported or is blocked by your browser.");
+                    }
+                    return;
+                }
+
                 // Start Tracking
                 isTracking = true;
                 initCompass();
@@ -852,8 +867,21 @@
                     document.getElementById('gps-acc').innerText = currentAccuracy.toFixed(1) + 'm';
                 }, function (error) {
                     console.error("GPS Watch Position Error:", error);
-                    alert("GPS position acquisition failed: " + error.message);
-                    toggleTracking(); // Shut off tracking
+                    var msg = error.message;
+                    if (error.code === error.PERMISSION_DENIED) {
+                        msg = "Permission denied. Please allow location access in your browser settings.";
+                    }
+                    alert("GPS position acquisition failed: " + msg);
+                    
+                    // Reset tracking state
+                    watchId = null;
+                    isTracking = false;
+                    fab.classList.remove('active');
+                    statusCard.style.display = 'none';
+                    if (userLocationMarker) map.removeLayer(userLocationMarker);
+                    if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+                    userLocationMarker = null;
+                    userAccuracyCircle = null;
                 }, {
                     enableHighAccuracy: true,
                     maximumAge: 0,
