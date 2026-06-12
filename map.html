@@ -416,7 +416,7 @@
                     <span class="file-btn-title" id="png-title">Select PNG Map</span>
                     <span class="file-btn-sub" id="png-sub">No file chosen</span>
                 </div>
-                <input type="file" id="png-input" accept=".png" style="display: none;" onchange="handlePngSelected(event)">
+                <input type="file" id="png-input" accept="*/*" style="display: none;" onchange="handlePngSelected(event)">
 
                 <!-- PGW Button -->
                 <div class="file-btn" id="pgw-btn" onclick="document.getElementById('pgw-input').click()">
@@ -693,6 +693,13 @@
         function handlePngSelected(event) {
             var file = event.target.files[0];
             if (!file) return;
+
+            // Validate that it's a PNG file (since accept="*/*" opens the general file picker)
+            if (!file.name.toLowerCase().endsWith('.png')) {
+                alert("Please select a valid PNG image file (.png)");
+                event.target.value = ""; // Reset the input element
+                return;
+            }
 
             selectedPngFile = file;
             var btn = document.getElementById('png-btn');
