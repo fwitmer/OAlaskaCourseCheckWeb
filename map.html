@@ -618,7 +618,9 @@
             onAdd: function (map) {
                 this._map = map;
                 this._pane = this.getPane();
-                this._image = L.DomUtil.create('img', 'leaflet-image-layer', this._pane);
+                
+                // Add leaflet-zoom-animated class to enable hardware-accelerated zoom animations
+                this._image = L.DomUtil.create('img', 'leaflet-image-layer leaflet-zoom-animated', this._pane);
                 this._image.style.position = 'absolute';
                 this._image.style.transformOrigin = '0 0';
                 this._image.style.opacity = this.options.opacity || 1;
@@ -626,11 +628,18 @@
                 var self = this;
                 this._image.onload = function () { self._update(); };
                 this._image.src = this._url;
+                
                 map.on('zoom zoomend viewreset', this._update, this);
+                if (map.options.zoomAnimation && L.Browser.any3d) {
+                    map.on('zoomanim', this._animateZoom, this);
+                }
             },
             onRemove: function (map) {
                 L.DomUtil.remove(this._image);
                 map.off('zoom zoomend viewreset', this._update, this);
+                if (map.options.zoomAnimation && L.Browser.any3d) {
+                    map.off('zoomanim', this._animateZoom, this);
+                }
             },
             _update: function () {
                 if (!this._map || !this._image) return;
@@ -646,6 +655,29 @@
 
                 img.style.width = naturalW + 'px';
                 img.style.height = naturalH + 'px';
+
+                var a = (p2.x - p1.x) / naturalW;
+                var b = (p2.y - p1.y) / naturalW;
+                var c = (p3.x - p1.x) / naturalH;
+                var d = (p3.y - p1.y) / naturalH;
+
+                img.style.transform = 'matrix(' +
+                    a.toFixed(10) + ',' + b.toFixed(10) + ',' +
+                    c.toFixed(10) + ',' + d.toFixed(10) + ',' +
+                    p1.x.toFixed(2) + ',' + p1.y.toFixed(2) + ')';
+            },
+            _animateZoom: function (e) {
+                if (!this._map || !this._image) return;
+                var img = this._image;
+                var map = this._map;
+
+                // Calculate the target positions of the three corners for the target zoom/center
+                var p1 = map._latLngToNewLayerPoint(this._tl, e.zoom, e.center);
+                var p2 = map._latLngToNewLayerPoint(this._tr, e.zoom, e.center);
+                var p3 = map._latLngToNewLayerPoint(this._bl, e.zoom, e.center);
+
+                var naturalW = img.naturalWidth || 1;
+                var naturalH = img.naturalHeight || 1;
 
                 var a = (p2.x - p1.x) / naturalW;
                 var b = (p2.y - p1.y) / naturalW;
