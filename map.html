@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>OAlaska Course Check</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Local Leaflet Stylesheet -->
+    <link rel="stylesheet" href="leaflet.css" />
+
+    <!-- Local Javascript Libraries -->
+    <script src="leaflet.js"></script>
+    <script src="proj4.js"></script>
+    <script src="proj4leaflet.js"></script>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f4f6f9;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .leaflet-image-layer {
+            will-change: transform;
+            image-rendering: -webkit-optimize-contrast;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+        }
+
+        /* --- UI Overlay Cards (Glassmorphism + Premium Aesthetics) --- */
+        .ui-container {
+            position: absolute;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .ui-top {
+            top: 0;
+            align-items: center;
+        }
+
+        .ui-bottom {
+            bottom: 0;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        .glass-card {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.15);
+            border-radius: 16px;
+            box-sizing: border-box;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Controls Panel */
+        .controls-card {
+            width: 100%;
+            max-width: 440px;
+            padding: 16px;
+        }
+
+        .app-header {
+            margin-bottom: 12px;
+        }
+
+        .app-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+        }
+
+        .app-subtitle {
+            margin: 2px 0 0 0;
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        /* File selectors and inputs */
+        .row-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .file-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 8px;
+            background-color: #f1f5f9;
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .file-btn:hover {
+            background-color: #e2e8f0;
+            border-color: #94a3b8;
+        }
+
+        .file-btn.loaded {
+            background-color: #e0f2fe;
+            border-color: #0284c7;
+            border-style: solid;
+        }
+
+        .file-btn-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 2px;
+        }
+
+        .file-btn.loaded .file-btn-title {
+            color: #0369a1;
+        }
+
+        .file-btn-sub {
+            font-size: 10px;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 130px;
+        }
+
+        .file-btn.loaded .file-btn-sub {
+            color: #0284c7;
+            font-weight: 500;
+        }
+
+        /* Dropdown custom styling */
+        .crs-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .crs-label {
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .crs-select-wrapper {
+            position: relative;
+            width: 60%;
+        }
+
+        .crs-select {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            color: #0f172a;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .crs-select:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+        }
+
+        .crs-select-wrapper::after {
+            content: "▼";
+            font-size: 8px;
+            color: #64748b;
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* GPS Status Info Card */
+        .info-card {
+            padding: 12px;
+            width: 190px;
+            display: none; /* Shown dynamically */
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+        }
+
+        .info-title {
+            margin: 0 0 4px 0;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0284c7;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 2px;
+            color: #1e293b;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 3px;
+            margin-top: 3px;
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        .info-val {
+            font-weight: 600;
+        }
+
+        /* Floating Action Button (FAB) */
+        .fab-track {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #64748b;
+        }
+
+        .fab-track:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.3);
+        }
+
+        .fab-track.active {
+            background-color: #007cff;
+            color: #ffffff;
+        }
+
+        .fab-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            transition: transform 0.2s ease;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: none; /* Toggled dynamically */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-spinner-card {
+            background: #ffffff;
+            padding: 24px 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .spinner {
+            border: 4px solid #f1f5f9;
+            border-top: 4px solid #007cff;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* --- GPS Blue Dot Marker (Copied from Native layout) --- */
+        .gps-marker-container {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gps-fan {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            top: 0;
+            left: 0;
+            transform-origin: 30px 30px;
+            transition: transform 0.1s ease-out;
+            display: none;
+        }
+
+        .gps-dot-container {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        .gps-white-ring {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .gps-blue-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            top: 3px;
+            left: 3px;
+            border-radius: 50%;
+            background-color: #007cff;
+            box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.8);
+            animation: gps-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes gps-pulse {
+            0% {
+                transform: scale(1.0);
+                background-color: #007cff;
+            }
+            50% {
+                transform: scale(1.15);
+                background-color: #3598ff;
+            }
+            100% {
+                transform: scale(1.0);
+                background-color: #007cff;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <!-- UI Overlay Top Container -->
+    <div class="ui-container ui-top">
+        <div class="glass-card controls-card">
+            <div class="app-header">
+                <h1 class="app-title">OAlaska Course Check</h1>
+                <p class="app-subtitle">Map Verification & GPS Tracker</p>
+            </div>
+
+            <!-- File Pickers -->
+            <div class="row-buttons">
+                <!-- PNG Button -->
+                <div class="file-btn" id="png-btn" onclick="document.getElementById('png-input').click()">
+                    <span class="file-btn-title" id="png-title">Select PNG Map</span>
+                    <span class="file-btn-sub" id="png-sub">No file chosen</span>
+                </div>
+                <input type="file" id="png-input" accept="image/png" style="display: none;" onchange="handlePngSelected(event)">
+
+                <!-- PGW Button -->
+                <div class="file-btn" id="pgw-btn" onclick="document.getElementById('pgw-input').click()">
+                    <span class="file-btn-title" id="pgw-title">Select PGW World</span>
+                    <span class="file-btn-sub" id="pgw-sub">No file chosen</span>
+                </div>
+                <input type="file" id="pgw-input" accept=".pgw" style="display: none;" onchange="handlePgwSelected(event)">
+            </div>
+
+            <!-- CRS Dropdown -->
+            <div class="crs-container">
+                <span class="crs-label">Coordinate System:</span>
+                <div class="crs-select-wrapper">
+                    <select class="crs-select" id="crs-select" onchange="handleCrsChanged(event)">
+                        <option value="EPSG:32606">UTM Zone 6N (Alaska Central)</option>
+                        <option value="EPSG:32605">UTM Zone 5N (Alaska West)</option>
+                        <option value="EPSG:32607">UTM Zone 7N (Alaska East)</option>
+                        <option value="EPSG:32608">UTM Zone 8N (Alaska SE)</option>
+                        <option value="EPSG:32609">UTM Zone 9N (SE Alaska/Yukon)</option>
+                        <option value="EPSG:4326">WGS 84 (Standard GPS Lat/Lng)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Overlay Bottom Container -->
+    <div class="ui-container ui-bottom">
+        <!-- Info Card (Bottom-Left) -->
+        <div class="glass-card info-card" id="info-card">
+            <h3 class="info-title">GPS Status: Active</h3>
+            <div class="info-row">
+                <span>Lat:</span>
+                <span class="info-val" id="gps-lat">---</span>
+            </div>
+            <div class="info-row">
+                <span>Lng:</span>
+                <span class="info-val" id="gps-lng">---</span>
+            </div>
+            <div class="info-row">
+                <span>Acc:</span>
+                <span class="info-val" id="gps-acc">---</span>
+            </div>
+            <div class="info-row">
+                <span>Heading:</span>
+                <span class="info-val" id="gps-hdg">---</span>
+            </div>
+        </div>
+
+        <!-- FAB Track Toggle (Bottom-Right) -->
+        <button class="fab-track" id="fab-track" onclick="toggleTracking()">
+            <!-- Location Icon SVG -->
+            <svg class="fab-icon" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner-card">
+            <div class="spinner"></div>
+            <div>Processing map files...</div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Map
+        var map = L.map('map', {
+            zoomControl: false,
+            attributionControl: true
+        }).setView([61.2181, -149.9003], 11); // Centered on Anchorage, Alaska
+
+        // Load Default OpenStreetMap layer
+        var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap',
+            updateWhenPanning: false,
+            updateWhenIdle: true,
+            keepBuffer: 2
+        }).addTo(map);
+
+        // Global references
+        var currentMapOverlay = null;
+        var userLocationMarker = null;
+        var userAccuracyCircle = null;
+        
+        var isTracking = false;
+        var watchId = null;
+        
+        var currentLat = null;
+        var currentLng = null;
+        var currentAccuracy = null;
+        var currentHeading = null;
+        
+        var selectedPngFile = null;
+        var selectedPgwFile = null;
+        var selectedCrs = "EPSG:32606";
+        var currentPngUrl = null;
+
+        // Register Proj4 projection definitions for Alaska UTM zones & WGS84
+        proj4.defs([
+            ["EPSG:32605", "+proj=utm +zone=5 +datum=WGS84 +units=m +no_defs"],
+            ["EPSG:32606", "+proj=utm +zone=6 +datum=WGS84 +units=m +no_defs"],
+            ["EPSG:32607", "+proj=utm +zone=7 +datum=WGS84 +units=m +no_defs"],
+            ["EPSG:32608", "+proj=utm +zone=8 +datum=WGS84 +units=m +no_defs"],
+            ["EPSG:32609", "+proj=utm +zone=9 +datum=WGS84 +units=m +no_defs"],
+            ["EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs"]
+        ]);
+
+        /**
+         * Custom Leaflet layer for rotated image overlays
+         */
+        L.RotatedImageOverlay = L.Layer.extend({
+            initialize: function (url, tl, tr, bl, options) {
+                this._url = url;
+                this._tl = L.latLng(tl);
+                this._tr = L.latLng(tr);
+                this._bl = L.latLng(bl);
+                L.setOptions(this, options);
+            },
+            onAdd: function (map) {
+                this._map = map;
+                this._pane = this.getPane();
+                this._image = L.DomUtil.create('img', 'leaflet-image-layer', this._pane);
+                this._image.style.position = 'absolute';
+                this._image.style.transformOrigin = '0 0';
+                this._image.style.opacity = this.options.opacity || 1;
+                
+                var self = this;
+                this._image.onload = function () { self._update(); };
+                this._image.src = this._url;
+                map.on('zoom zoomend viewreset', this._update, this);
+            },
+            onRemove: function (map) {
+                L.DomUtil.remove(this._image);
+                map.off('zoom zoomend viewreset', this._update, this);
+            },
+            _update: function () {
+                if (!this._map || !this._image) return;
+                var img = this._image;
+                var map = this._map;
+
+                var p1 = map.latLngToLayerPoint(this._tl);
+                var p2 = map.latLngToLayerPoint(this._tr);
+                var p3 = map.latLngToLayerPoint(this._bl);
+
+                var naturalW = img.naturalWidth || 1;
+                var naturalH = img.naturalHeight || 1;
+
+                img.style.width = naturalW + 'px';
+                img.style.height = naturalH + 'px';
+
+                var a = (p2.x - p1.x) / naturalW;
+                var b = (p2.y - p1.y) / naturalW;
+                var c = (p3.x - p1.x) / naturalH;
+                var d = (p3.y - p1.y) / naturalH;
+
+                img.style.transform = 'matrix(' +
+                    a.toFixed(10) + ',' + b.toFixed(10) + ',' +
+                    c.toFixed(10) + ',' + d.toFixed(10) + ',' +
+                    p1.x.toFixed(2) + ',' + p1.y.toFixed(2) + ')';
+            }
+        });
+
+        function loadMap(pgwText, imagePath, width, height, crsCode) {
+            try {
+                var lines = pgwText.trim().split(/\r?\n/);
+                if (lines.length < 6) throw new Error("Invalid PGW file format");
+                
+                var A = parseFloat(lines[0]), 
+                    D = parseFloat(lines[1]), 
+                    B = parseFloat(lines[2]), 
+                    E = parseFloat(lines[3]), 
+                    C = parseFloat(lines[4]), 
+                    F = parseFloat(lines[5]);
+
+                var getLL = (x, y) => { 
+                    var p = proj4(crsCode, "EPSG:4326", [A * x + B * y + C, D * x + E * y + F]); 
+                    return [p[1], p[0]]; 
+                };
+                
+                var tl = getLL(0, 0), 
+                    tr = getLL(width, 0), 
+                    bl = getLL(0, height);
+
+                if (currentMapOverlay) map.removeLayer(currentMapOverlay);
+                currentMapOverlay = new L.RotatedImageOverlay(imagePath, tl, tr, bl, { opacity: 0.85 }).addTo(map);
+
+                var bounds = L.latLngBounds([tl, tr, bl, getLL(width, height)]);
+                map.fitBounds(bounds);
+                return "Successfully loaded rotated map";
+            } catch (error) { 
+                alert("Error projecting map: " + error.message);
+                return "Error: " + error.message; 
+            }
+        }
+
+        /**
+         * Update blue dot marker position, accuracy circle, and heading fan
+         */
+        function updateUserLocation(lat, lng, accuracy, heading) {
+            try {
+                var latlng = L.latLng(lat, lng);
+
+                if (!userAccuracyCircle) {
+                    userAccuracyCircle = L.circle(latlng, {
+                        radius: accuracy || 5,
+                        color: '#007cff',
+                        fillColor: '#007cff',
+                        fillOpacity: 0.08,
+                        weight: 1,
+                        interactive: false
+                    }).addTo(map);
+                } else {
+                    userAccuracyCircle.setLatLng(latlng);
+                    userAccuracyCircle.setRadius(accuracy || 5);
+                }
+
+                if (!userLocationMarker) {
+                    var gpsIcon = L.divIcon({
+                        className: '',
+                        html: `
+                            <div class="gps-marker-container">
+                                <div class="gps-fan" id="gps-heading-fan">
+                                    <svg width="60" height="60" viewBox="0 0 60 60">
+                                        <defs>
+                                            <radialGradient id="fanGrad" cx="50%" cy="50%" r="50%">
+                                                <stop offset="0%" stop-color="rgba(0, 124, 255, 0.45)" />
+                                                <stop offset="100%" stop-color="rgba(0, 124, 255, 0)" />
+                                            </radialGradient>
+                                        </defs>
+                                        <path d="M 30 30 L 15 4.02 A 30 30 0 0 1 45 4.02 Z" fill="url(#fanGrad)" />
+                                    </svg>
+                                </div>
+                                <div class="gps-dot-container">
+                                    <div class="gps-white-ring"></div>
+                                    <div class="gps-blue-dot"></div>
+                                </div>
+                            </div>
+                        `,
+                        iconSize: [60, 60],
+                        iconAnchor: [30, 30]
+                    });
+
+                    userLocationMarker = L.marker(latlng, {
+                        icon: gpsIcon,
+                        interactive: false,
+                        zIndexOffset: 5000
+                    }).addTo(map);
+                } else {
+                    userLocationMarker.setLatLng(latlng);
+                }
+
+                var fanElement = document.getElementById('gps-heading-fan');
+                if (fanElement) {
+                    if (heading !== null && heading !== undefined && !isNaN(heading)) {
+                        fanElement.style.display = 'block';
+                        fanElement.style.transform = 'rotate(' + heading + 'deg)';
+                    } else {
+                        fanElement.style.display = 'none';
+                    }
+                }
+
+                if (isTracking) {
+                    map.panTo(latlng);
+                }
+            } catch (error) {
+                console.error("Error in updateUserLocation:", error);
+            }
+        }
+
+        // Handle file loading
+        function handlePngSelected(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            selectedPngFile = file;
+            var btn = document.getElementById('png-btn');
+            btn.classList.add('loaded');
+            document.getElementById('png-title').innerText = "PNG Loaded";
+            document.getElementById('png-sub').innerText = file.name;
+
+            triggerLoadMap();
+        }
+
+        function handlePgwSelected(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            selectedPgwFile = file;
+            var btn = document.getElementById('pgw-btn');
+            btn.classList.add('loaded');
+            document.getElementById('pgw-title').innerText = "PGW Loaded";
+            document.getElementById('pgw-sub').innerText = file.name;
+
+            triggerLoadMap();
+        }
+
+        function handleCrsChanged(event) {
+            selectedCrs = event.target.value;
+            triggerLoadMap();
+        }
+
+        function triggerLoadMap() {
+            if (!selectedPngFile || !selectedPgwFile) return;
+
+            document.getElementById('loading-overlay').style.display = 'flex';
+
+            var pgwReader = new FileReader();
+            pgwReader.onload = function (e) {
+                var pgwText = e.target.result;
+
+                if (currentPngUrl) {
+                    URL.revokeObjectURL(currentPngUrl);
+                }
+                currentPngUrl = URL.createObjectURL(selectedPngFile);
+
+                var img = new Image();
+                img.onload = function () {
+                    var width = this.width;
+                    var height = this.height;
+
+                    loadMap(pgwText, currentPngUrl, width, height, selectedCrs);
+                    document.getElementById('loading-overlay').style.display = 'none';
+                };
+                img.onerror = function () {
+                    alert("Failed to load PNG image.");
+                    document.getElementById('loading-overlay').style.display = 'none';
+                };
+                img.src = currentPngUrl;
+            };
+            pgwReader.onerror = function () {
+                alert("Failed to read PGW file.");
+                document.getElementById('loading-overlay').style.display = 'none';
+            };
+            pgwReader.readAsText(selectedPgwFile);
+        }
+
+        // Compass Heading
+        function initCompass() {
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                        } else {
+                            alert('Compass/Orientation permission was denied. Heading direction fan will not be shown.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error("DeviceOrientation permission error:", error);
+                    });
+            } else {
+                // Android or other browsers
+                window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                window.addEventListener('deviceorientation', handleOrientation, true);
+            }
+        }
+
+        function handleOrientation(event) {
+            var heading = null;
+            if (event.webkitCompassHeading !== undefined) {
+                heading = event.webkitCompassHeading;
+            } else if (event.alpha !== null) {
+                heading = 360 - event.alpha;
+            }
+
+            if (heading !== null && !isNaN(heading)) {
+                currentHeading = heading;
+                updateLocationMarker();
+            }
+        }
+
+        // GPS Tracking
+        function toggleTracking() {
+            var fab = document.getElementById('fab-track');
+            var statusCard = document.getElementById('info-card');
+
+            if (watchId) {
+                // Stop Tracking
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                isTracking = false;
+
+                fab.classList.remove('active');
+                statusCard.style.display = 'none';
+
+                window.removeEventListener('deviceorientation', handleOrientation, true);
+                window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+
+                if (userLocationMarker) map.removeLayer(userLocationMarker);
+                if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+                userLocationMarker = null;
+                userAccuracyCircle = null;
+                
+                currentLat = null;
+                currentLng = null;
+                currentAccuracy = null;
+                currentHeading = null;
+            } else {
+                // Start Tracking
+                isTracking = true;
+                initCompass();
+
+                fab.classList.add('active');
+
+                watchId = navigator.geolocation.watchPosition(function (position) {
+                    currentLat = position.coords.latitude;
+                    currentLng = position.coords.longitude;
+                    currentAccuracy = position.coords.accuracy;
+
+                    if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
+                        if (currentHeading === null) {
+                            currentHeading = position.coords.heading;
+                        }
+                    }
+
+                    updateLocationMarker();
+
+                    statusCard.style.display = 'block';
+                    document.getElementById('gps-lat').innerText = currentLat.toFixed(5);
+                    document.getElementById('gps-lng').innerText = currentLng.toFixed(5);
+                    document.getElementById('gps-acc').innerText = currentAccuracy.toFixed(1) + 'm';
+                }, function (error) {
+                    console.error("GPS Watch Position Error:", error);
+                    alert("GPS position acquisition failed: " + error.message);
+                    toggleTracking(); // Shut off tracking
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 10000
+                });
+            }
+        }
+
+        function updateLocationMarker() {
+            if (currentLat === null || currentLng === null) return;
+            updateUserLocation(currentLat, currentLng, currentAccuracy, currentHeading);
+
+            var hdgText = currentHeading !== null ? Math.round(currentHeading) + '°' : '---';
+            document.getElementById('gps-hdg').innerText = hdgText;
+        }
+    </script>
+</body>
+
+</html>
