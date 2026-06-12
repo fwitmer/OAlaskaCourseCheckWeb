@@ -396,6 +396,76 @@
                 background-color: #007cff;
             }
         }
+
+        /* --- Responsive Design for Smaller Mobile Screens --- */
+        @media (max-width: 400px) {
+            .ui-container {
+                padding: 10px;
+            }
+            .controls-card {
+                padding: 12px;
+            }
+            .app-title {
+                font-size: 17px;
+            }
+            .app-subtitle {
+                font-size: 11px;
+            }
+            .file-btn {
+                padding: 8px 6px;
+                border-radius: 8px;
+            }
+            .file-btn-title {
+                font-size: 11px;
+            }
+            .file-btn-sub {
+                font-size: 9px;
+                max-width: 110px;
+            }
+            .crs-container {
+                font-size: 12px;
+            }
+            .crs-select {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            .info-card {
+                width: 160px;
+                padding: 8px;
+            }
+            .info-title {
+                font-size: 9px;
+            }
+            .info-row {
+                font-size: 11px;
+            }
+            .fab-track {
+                width: 48px;
+                height: 48px;
+            }
+            .fab-icon {
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        @media (max-width: 340px) {
+            .row-buttons {
+                flex-direction: column;
+                gap: 6px;
+            }
+            .file-btn-sub {
+                max-width: 100%;
+            }
+            .crs-container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .crs-select-wrapper {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
