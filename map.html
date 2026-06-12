@@ -259,6 +259,7 @@
 
         /* Floating Action Button (FAB) */
         .fab-track {
+            pointer-events: auto;
             width: 56px;
             height: 56px;
             border-radius: 50%;
@@ -484,6 +485,12 @@
     </div>
 
     <script>
+        // Global error handler for mobile debugging
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("JS Error: " + message + " on line " + lineno + "\nSource: " + source);
+            return false;
+        };
+
         // Initialize Map
         var map = L.map('map', {
             zoomControl: false,
