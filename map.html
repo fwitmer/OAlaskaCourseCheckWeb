@@ -257,6 +257,40 @@
             font-weight: 600;
         }
 
+        .right-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: auto;
+            align-items: center;
+        }
+
+        .fab-btn {
+            pointer-events: auto;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #64748b;
+        }
+
+        .fab-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.25);
+            color: #0f172a;
+        }
+
+        .fab-btn:active {
+            transform: scale(0.95);
+        }
+
         /* Floating Action Button (FAB) */
         .fab-track {
             pointer-events: auto;
@@ -443,6 +477,10 @@
                 width: 48px;
                 height: 48px;
             }
+            .fab-btn {
+                width: 38px;
+                height: 38px;
+            }
             .fab-icon {
                 width: 20px;
                 height: 20px;
@@ -524,13 +562,28 @@
             </div>
         </div>
 
-        <!-- FAB Track Toggle (Bottom-Right) -->
-        <button class="fab-track" id="fab-track" onclick="toggleTracking()">
-            <!-- Location Icon SVG -->
-            <svg class="fab-icon" viewBox="0 0 24 24">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-            </svg>
-        </button>
+        <!-- Vertical controls container (Bottom-Right) -->
+        <div class="right-controls">
+            <!-- Zoom In Button -->
+            <button class="fab-btn" onclick="map.zoomIn()" aria-label="Zoom In">
+                <svg class="fab-icon" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+            </button>
+            <!-- Zoom Out Button -->
+            <button class="fab-btn" onclick="map.zoomOut()" aria-label="Zoom Out">
+                <svg class="fab-icon" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M19 13H5v-2h14v2z"/>
+                </svg>
+            </button>
+            <!-- FAB Track Toggle -->
+            <button class="fab-track" id="fab-track" onclick="toggleTracking()" aria-label="Toggle Tracking">
+                <!-- Location Icon SVG -->
+                <svg class="fab-icon" viewBox="0 0 24 24">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                </svg>
+            </button>
+        </div>
     </div>
 
     <!-- Loading Overlay -->
