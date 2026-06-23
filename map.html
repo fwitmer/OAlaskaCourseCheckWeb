@@ -223,7 +223,8 @@
         .info-card {
             padding: 12px;
             width: 190px;
-            display: none; /* Shown dynamically */
+            display: none;
+            /* Shown dynamically */
             box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
         }
 
@@ -335,7 +336,8 @@
             background: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(4px);
             z-index: 2000;
-            display: none; /* Toggled dynamically */
+            display: none;
+            /* Toggled dynamically */
             align-items: center;
             justify-content: center;
         }
@@ -361,8 +363,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* --- GPS Blue Dot Marker (Copied from Native layout) --- */
@@ -421,10 +428,12 @@
                 transform: scale(1.0);
                 background-color: #007cff;
             }
+
             50% {
                 transform: scale(1.15);
                 background-color: #3598ff;
             }
+
             100% {
                 transform: scale(1.0);
                 background-color: #007cff;
@@ -436,51 +445,65 @@
             .ui-container {
                 padding: 10px;
             }
+
             .controls-card {
                 padding: 12px;
             }
+
             .app-title {
                 font-size: 17px;
             }
+
             .app-subtitle {
                 font-size: 11px;
             }
+
             .file-btn {
                 padding: 8px 6px;
                 border-radius: 8px;
             }
+
             .file-btn-title {
                 font-size: 11px;
             }
+
             .file-btn-sub {
                 font-size: 9px;
                 max-width: 110px;
             }
+
             .crs-container {
                 font-size: 12px;
             }
+
             .crs-select {
                 padding: 6px 10px;
                 font-size: 11px;
             }
+
             .info-card {
                 width: 160px;
                 padding: 8px;
             }
+
             .info-title {
                 font-size: 9px;
             }
+
             .info-row {
                 font-size: 11px;
             }
+
             .fab-track {
                 width: 48px;
                 height: 48px;
             }
+
             .fab-btn {
                 width: 38px;
                 height: 38px;
             }
+
             .fab-icon {
                 width: 20px;
                 height: 20px;
@@ -492,14 +515,17 @@
                 flex-direction: column;
                 gap: 6px;
             }
+
             .file-btn-sub {
                 max-width: 100%;
             }
+
             .crs-container {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 4px;
             }
+
             .crs-select-wrapper {
                 width: 100%;
             }
@@ -515,7 +541,7 @@
         <div class="glass-card controls-card">
             <div class="app-header">
                 <h1 class="app-title">OAlaska Course Check</h1>
-                <p class="app-subtitle">Map Verification & GPS Tracker</p>
+                <p class="app-subtitle">Navigate to each control using map, then turn on GPS point to verify</p>
             </div>
 
             <!-- File Pickers -->
@@ -525,14 +551,16 @@
                     <span class="file-btn-title" id="png-title">Select PNG Map</span>
                     <span class="file-btn-sub" id="png-sub">No file chosen</span>
                 </div>
-                <input type="file" id="png-input" accept="*/*" style="display: none;" onchange="handlePngSelected(event)">
+                <input type="file" id="png-input" accept="*/*" style="display: none;"
+                    onchange="handlePngSelected(event)">
 
                 <!-- PGW Button -->
                 <div class="file-btn" id="pgw-btn" onclick="document.getElementById('pgw-input').click()">
                     <span class="file-btn-title" id="pgw-title">Select PGW World</span>
                     <span class="file-btn-sub" id="pgw-sub">No file chosen</span>
                 </div>
-                <input type="file" id="pgw-input" accept=".pgw" style="display: none;" onchange="handlePgwSelected(event)">
+                <input type="file" id="pgw-input" accept=".pgw" style="display: none;"
+                    onchange="handlePgwSelected(event)">
             </div>
 
 
@@ -567,20 +595,21 @@
             <!-- Zoom In Button -->
             <button class="fab-btn" onclick="map.zoomIn()" aria-label="Zoom In">
                 <svg class="fab-icon" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
             </button>
             <!-- Zoom Out Button -->
             <button class="fab-btn" onclick="map.zoomOut()" aria-label="Zoom Out">
                 <svg class="fab-icon" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M19 13H5v-2h14v2z"/>
+                    <path fill="currentColor" d="M19 13H5v-2h14v2z" />
                 </svg>
             </button>
             <!-- FAB Track Toggle -->
             <button class="fab-track" id="fab-track" onclick="toggleTracking()" aria-label="Toggle Tracking">
                 <!-- Location Icon SVG -->
                 <svg class="fab-icon" viewBox="0 0 24 24">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                    <path
+                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                 </svg>
             </button>
         </div>
@@ -596,7 +625,7 @@
 
     <script>
         // Global error handler for mobile debugging
-        window.onerror = function(message, source, lineno, colno, error) {
+        window.onerror = function (message, source, lineno, colno, error) {
             alert("JS Error: " + message + " on line " + lineno + "\nSource: " + source);
             return false;
         };
@@ -620,17 +649,17 @@
         var currentMapOverlay = null;
         var userLocationMarker = null;
         var userAccuracyCircle = null;
-        
+
         var isTracking = false;
         var watchId = null;
-        
+
         var currentLat = null;
         var currentLng = null;
         var currentAccuracy = null;
         var currentHeading = null;
         var smoothedSin = null;
         var smoothedCos = null;
-        
+
         var selectedPngFile = null;
         var selectedPgwFile = null;
         var selectedCrs = "EPSG:32606";
@@ -660,17 +689,17 @@
             onAdd: function (map) {
                 this._map = map;
                 this._pane = this.getPane();
-                
+
                 // Add leaflet-zoom-animated class to enable hardware-accelerated zoom animations
                 this._image = L.DomUtil.create('img', 'leaflet-image-layer leaflet-zoom-animated', this._pane);
                 this._image.style.position = 'absolute';
                 this._image.style.transformOrigin = '0 0';
                 this._image.style.opacity = this.options.opacity || 1;
-                
+
                 var self = this;
                 this._image.onload = function () { self._update(); };
                 this._image.src = this._url;
-                
+
                 map.on('zoom zoomend viewreset', this._update, this);
                 if (map.options.zoomAnimation && L.Browser.any3d) {
                     map.on('zoomanim', this._animateZoom, this);
@@ -737,21 +766,21 @@
             try {
                 var lines = pgwText.trim().split(/\r?\n/);
                 if (lines.length < 6) throw new Error("Invalid PGW file format");
-                
-                var A = parseFloat(lines[0]), 
-                    D = parseFloat(lines[1]), 
-                    B = parseFloat(lines[2]), 
-                    E = parseFloat(lines[3]), 
-                    C = parseFloat(lines[4]), 
+
+                var A = parseFloat(lines[0]),
+                    D = parseFloat(lines[1]),
+                    B = parseFloat(lines[2]),
+                    E = parseFloat(lines[3]),
+                    C = parseFloat(lines[4]),
                     F = parseFloat(lines[5]);
 
-                var getLL = (x, y) => { 
-                    var p = proj4(crsCode, "EPSG:4326", [A * x + B * y + C, D * x + E * y + F]); 
-                    return [p[1], p[0]]; 
+                var getLL = (x, y) => {
+                    var p = proj4(crsCode, "EPSG:4326", [A * x + B * y + C, D * x + E * y + F]);
+                    return [p[1], p[0]];
                 };
-                
-                var tl = getLL(0, 0), 
-                    tr = getLL(width, 0), 
+
+                var tl = getLL(0, 0),
+                    tr = getLL(width, 0),
                     bl = getLL(0, height);
 
                 if (currentMapOverlay) map.removeLayer(currentMapOverlay);
@@ -760,9 +789,9 @@
                 var bounds = L.latLngBounds([tl, tr, bl, getLL(width, height)]);
                 map.fitBounds(bounds);
                 return "Successfully loaded rotated map";
-            } catch (error) { 
+            } catch (error) {
                 alert("Error projecting map: " + error.message);
-                return "Error: " + error.message; 
+                return "Error: " + error.message;
             }
         }
 
@@ -947,16 +976,16 @@
                 var headingRad = heading * Math.PI / 180;
                 var sin = Math.sin(headingRad);
                 var cos = Math.cos(headingRad);
-                
+
                 if (smoothedSin === null || smoothedCos === null) {
                     smoothedSin = sin;
                     smoothedCos = cos;
                 } else {
-                    var alpha = 0.15; // Smooth factor: 0.15 gives a smooth transition without excessive lag
+                    var alpha = 0.03; // Smooth factor: 0.03 aggregates ~65 samples (~1.1s at 60Hz) to filter out jitter
                     smoothedSin = alpha * sin + (1 - alpha) * smoothedSin;
                     smoothedCos = alpha * cos + (1 - alpha) * smoothedCos;
                 }
-                
+
                 var smoothedHeading = Math.atan2(smoothedSin, smoothedCos) * 180 / Math.PI;
                 if (smoothedHeading < 0) {
                     smoothedHeading += 360;
@@ -990,7 +1019,7 @@
                 if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
                 userLocationMarker = null;
                 userAccuracyCircle = null;
-                
+
                 currentLat = null;
                 currentLng = null;
                 currentAccuracy = null;
@@ -1002,7 +1031,7 @@
                 if (!navigator.geolocation) {
                     var isHttp = window.location.protocol === 'http:';
                     var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    
+
                     if (isHttp && !isLocal) {
                         alert("GPS tracking failed: Web browsers block GPS access on insecure HTTP connections.\n\nPlease host this app on a secure HTTPS server (like GitHub Pages or HTTPS WordPress) to enable location features on your mobile phone.");
                     } else {
@@ -1041,7 +1070,7 @@
                         msg = "Permission denied. Please allow location access in your browser settings.";
                     }
                     alert("GPS position acquisition failed: " + msg);
-                    
+
                     // Reset tracking state
                     watchId = null;
                     isTracking = false;
