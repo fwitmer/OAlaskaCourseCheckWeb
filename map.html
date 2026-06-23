@@ -497,20 +497,7 @@
                 <input type="file" id="pgw-input" accept=".pgw" style="display: none;" onchange="handlePgwSelected(event)">
             </div>
 
-            <!-- CRS Dropdown -->
-            <div class="crs-container">
-                <span class="crs-label">Coordinate System:</span>
-                <div class="crs-select-wrapper">
-                    <select class="crs-select" id="crs-select" onchange="handleCrsChanged(event)">
-                        <option value="EPSG:32606">UTM Zone 6N (Alaska Central)</option>
-                        <option value="EPSG:32605">UTM Zone 5N (Alaska West)</option>
-                        <option value="EPSG:32607">UTM Zone 7N (Alaska East)</option>
-                        <option value="EPSG:32608">UTM Zone 8N (Alaska SE)</option>
-                        <option value="EPSG:32609">UTM Zone 9N (SE Alaska/Yukon)</option>
-                        <option value="EPSG:4326">WGS 84 (Standard GPS Lat/Lng)</option>
-                    </select>
-                </div>
-            </div>
+
         </div>
     </div>
 
@@ -832,10 +819,7 @@
             triggerLoadMap();
         }
 
-        function handleCrsChanged(event) {
-            selectedCrs = event.target.value;
-            triggerLoadMap();
-        }
+
 
         function triggerLoadMap() {
             if (!selectedPngFile || !selectedPgwFile) return;
