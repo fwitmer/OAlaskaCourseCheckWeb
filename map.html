@@ -628,6 +628,8 @@
         var currentLng = null;
         var currentAccuracy = null;
         var currentHeading = null;
+        var smoothedSin = null;
+        var smoothedCos = null;
         
         var selectedPngFile = null;
         var selectedPgwFile = null;
@@ -941,7 +943,26 @@
             }
 
             if (heading !== null && !isNaN(heading)) {
-                currentHeading = heading;
+                // Apply low-pass filter (Exponential Moving Average) to circular components
+                var headingRad = heading * Math.PI / 180;
+                var sin = Math.sin(headingRad);
+                var cos = Math.cos(headingRad);
+                
+                if (smoothedSin === null || smoothedCos === null) {
+                    smoothedSin = sin;
+                    smoothedCos = cos;
+                } else {
+                    var alpha = 0.15; // Smooth factor: 0.15 gives a smooth transition without excessive lag
+                    smoothedSin = alpha * sin + (1 - alpha) * smoothedSin;
+                    smoothedCos = alpha * cos + (1 - alpha) * smoothedCos;
+                }
+                
+                var smoothedHeading = Math.atan2(smoothedSin, smoothedCos) * 180 / Math.PI;
+                if (smoothedHeading < 0) {
+                    smoothedHeading += 360;
+                }
+
+                currentHeading = smoothedHeading;
                 updateLocationMarker();
             }
         }
@@ -974,6 +995,8 @@
                 currentLng = null;
                 currentAccuracy = null;
                 currentHeading = null;
+                smoothedSin = null;
+                smoothedCos = null;
             } else {
                 // Check if Geolocation is supported/available (restricted to HTTPS on mobile)
                 if (!navigator.geolocation) {
