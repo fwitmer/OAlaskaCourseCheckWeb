@@ -169,6 +169,35 @@
             font-weight: 500;
         }
 
+        /* Clear Map Button styling */
+        .clear-btn-container {
+            display: none;
+            justify-content: flex-end;
+            margin-top: -4px;
+            margin-bottom: 8px;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .clear-btn:hover {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
         /* Dropdown custom styling */
         .crs-container {
             display: flex;
@@ -563,6 +592,17 @@
                     onchange="handlePgwSelected(event)">
             </div>
 
+            <!-- Clear Map Button -->
+            <div class="clear-btn-container" id="clear-map-row">
+                <button type="button" class="clear-btn" onclick="clearCurrentMap()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Clear Loaded Map
+                </button>
+            </div>
+
 
         </div>
     </div>
@@ -661,9 +701,80 @@
         var smoothedCos = null;
 
         var selectedPngFile = null;
+        var selectedPngName = null;
         var selectedPgwFile = null;
+        var selectedPgwText = null;
+        var selectedPgwName = null;
         var selectedCrs = "EPSG:32606";
         var currentPngUrl = null;
+
+        // --- IndexedDB Persistence Helper ---
+        var DB_NAME = 'OAlaskaMapDB';
+        var DB_VERSION = 1;
+        var STORE_NAME = 'active_map_store';
+        var MAP_RECORD_KEY = 'saved_map';
+
+        function openMapDB() {
+            return new Promise(function (resolve, reject) {
+                if (!window.indexedDB) {
+                    return reject(new Error("IndexedDB is not supported"));
+                }
+                var req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = function (e) {
+                    var db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                req.onsuccess = function () {
+                    resolve(req.result);
+                };
+                req.onerror = function () {
+                    reject(req.error);
+                };
+            });
+        }
+
+        function saveMapToIndexedDB(mapRecord) {
+            return openMapDB().then(function (db) {
+                return new Promise(function (resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readwrite');
+                    var store = tx.objectStore(STORE_NAME);
+                    var req = store.put(mapRecord, MAP_RECORD_KEY);
+                    req.onsuccess = function () { resolve(); };
+                    req.onerror = function () { reject(req.error); };
+                });
+            });
+        }
+
+        function loadMapFromIndexedDB() {
+            return openMapDB().then(function (db) {
+                return new Promise(function (resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readonly');
+                    var store = tx.objectStore(STORE_NAME);
+                    var req = store.get(MAP_RECORD_KEY);
+                    req.onsuccess = function () { resolve(req.result || null); };
+                    req.onerror = function () { reject(req.error); };
+                });
+            }).catch(function (err) {
+                console.warn("IndexedDB read error:", err);
+                return null;
+            });
+        }
+
+        function clearMapFromIndexedDB() {
+            return openMapDB().then(function (db) {
+                return new Promise(function (resolve, reject) {
+                    var tx = db.transaction(STORE_NAME, 'readwrite');
+                    var store = tx.objectStore(STORE_NAME);
+                    var req = store.delete(MAP_RECORD_KEY);
+                    req.onsuccess = function () { resolve(); };
+                    req.onerror = function () { reject(req.error); };
+                });
+            }).catch(function (err) {
+                console.warn("IndexedDB clear error:", err);
+            });
+        }
 
         // Register Proj4 projection definitions for Alaska UTM zones & WGS84
         proj4.defs([
@@ -762,7 +873,7 @@
             }
         });
 
-        function loadMap(pgwText, imagePath, width, height, crsCode) {
+        function loadMap(pgwText, imagePath, width, height, crsCode, skipFitBounds) {
             try {
                 var lines = pgwText.trim().split(/\r?\n/);
                 if (lines.length < 6) throw new Error("Invalid PGW file format");
@@ -786,8 +897,10 @@
                 if (currentMapOverlay) map.removeLayer(currentMapOverlay);
                 currentMapOverlay = new L.RotatedImageOverlay(imagePath, tl, tr, bl, { opacity: 0.85 }).addTo(map);
 
-                var bounds = L.latLngBounds([tl, tr, bl, getLL(width, height)]);
-                map.fitBounds(bounds);
+                if (!skipFitBounds) {
+                    var bounds = L.latLngBounds([tl, tr, bl, getLL(width, height)]);
+                    map.fitBounds(bounds);
+                }
                 return "Successfully loaded rotated map";
             } catch (error) {
                 alert("Error projecting map: " + error.message);
@@ -882,6 +995,7 @@
             }
 
             selectedPngFile = file;
+            selectedPngName = file.name;
             var btn = document.getElementById('png-btn');
             btn.classList.add('loaded');
             document.getElementById('png-title').innerText = "PNG Loaded";
@@ -895,6 +1009,7 @@
             if (!file) return;
 
             selectedPgwFile = file;
+            selectedPgwName = file.name;
             var btn = document.getElementById('pgw-btn');
             btn.classList.add('loaded');
             document.getElementById('pgw-title').innerText = "PGW Loaded";
@@ -903,16 +1018,14 @@
             triggerLoadMap();
         }
 
-
-
         function triggerLoadMap() {
-            if (!selectedPngFile || !selectedPgwFile) return;
+            if (!selectedPngFile) return;
+            if (!selectedPgwFile && !selectedPgwText) return;
 
             document.getElementById('loading-overlay').style.display = 'flex';
 
-            var pgwReader = new FileReader();
-            pgwReader.onload = function (e) {
-                var pgwText = e.target.result;
+            var proceedWithPgw = function (pgwContent) {
+                selectedPgwText = pgwContent;
 
                 if (currentPngUrl) {
                     URL.revokeObjectURL(currentPngUrl);
@@ -924,8 +1037,28 @@
                     var width = this.width;
                     var height = this.height;
 
-                    loadMap(pgwText, currentPngUrl, width, height, selectedCrs);
+                    loadMap(pgwContent, currentPngUrl, width, height, selectedCrs, false);
                     document.getElementById('loading-overlay').style.display = 'none';
+
+                    var clearRow = document.getElementById('clear-map-row');
+                    if (clearRow) clearRow.style.display = 'flex';
+
+                    // Persist to IndexedDB
+                    var pngNameToSave = selectedPngName || (selectedPngFile && selectedPngFile.name) || "map.png";
+                    var pgwNameToSave = selectedPgwName || (selectedPgwFile && selectedPgwFile.name) || "map.pgw";
+
+                    saveMapToIndexedDB({
+                        pngBlob: selectedPngFile,
+                        pngName: pngNameToSave,
+                        pgwText: pgwContent,
+                        pgwName: pgwNameToSave,
+                        width: width,
+                        height: height,
+                        crs: selectedCrs,
+                        timestamp: Date.now()
+                    }).catch(function (err) {
+                        console.error("Failed to save map to IndexedDB:", err);
+                    });
                 };
                 img.onerror = function () {
                     alert("Failed to load PNG image.");
@@ -933,11 +1066,127 @@
                 };
                 img.src = currentPngUrl;
             };
-            pgwReader.onerror = function () {
-                alert("Failed to read PGW file.");
-                document.getElementById('loading-overlay').style.display = 'none';
-            };
-            pgwReader.readAsText(selectedPgwFile);
+
+            if (selectedPgwFile) {
+                var pgwReader = new FileReader();
+                pgwReader.onload = function (e) {
+                    proceedWithPgw(e.target.result);
+                };
+                pgwReader.onerror = function () {
+                    alert("Failed to read PGW file.");
+                    document.getElementById('loading-overlay').style.display = 'none';
+                };
+                pgwReader.readAsText(selectedPgwFile);
+            } else if (selectedPgwText) {
+                proceedWithPgw(selectedPgwText);
+            }
+        }
+
+        function restoreSavedMap() {
+            loadMapFromIndexedDB().then(function (saved) {
+                if (!saved || !saved.pngBlob || !saved.pgwText) return;
+
+                selectedPngFile = saved.pngBlob;
+                selectedPngName = saved.pngName || "map.png";
+                selectedPgwText = saved.pgwText;
+                selectedPgwName = saved.pgwName || "map.pgw";
+                if (saved.crs) selectedCrs = saved.crs;
+
+                // Update UI Buttons
+                var pngBtn = document.getElementById('png-btn');
+                if (pngBtn) pngBtn.classList.add('loaded');
+                var pngTitle = document.getElementById('png-title');
+                if (pngTitle) pngTitle.innerText = "PNG Loaded";
+                var pngSub = document.getElementById('png-sub');
+                if (pngSub) pngSub.innerText = selectedPngName;
+
+                var pgwBtn = document.getElementById('pgw-btn');
+                if (pgwBtn) pgwBtn.classList.add('loaded');
+                var pgwTitle = document.getElementById('pgw-title');
+                if (pgwTitle) pgwTitle.innerText = "PGW Loaded";
+                var pgwSub = document.getElementById('pgw-sub');
+                if (pgwSub) pgwSub.innerText = selectedPgwName;
+
+                var clearRow = document.getElementById('clear-map-row');
+                if (clearRow) clearRow.style.display = 'flex';
+
+                if (currentPngUrl) {
+                    URL.revokeObjectURL(currentPngUrl);
+                }
+                currentPngUrl = URL.createObjectURL(saved.pngBlob);
+
+                // Check for saved center & zoom
+                var savedView = null;
+                try {
+                    var viewJson = localStorage.getItem('oalaska_map_view');
+                    if (viewJson) savedView = JSON.parse(viewJson);
+                } catch (e) { }
+
+                var hasSavedView = savedView && savedView.lat !== undefined && savedView.lng !== undefined && savedView.zoom !== undefined;
+
+                var onDimensionsReady = function (width, height) {
+                    loadMap(saved.pgwText, currentPngUrl, width, height, selectedCrs, hasSavedView);
+                    if (hasSavedView) {
+                        map.setView([savedView.lat, savedView.lng], savedView.zoom);
+                    }
+                };
+
+                if (saved.width && saved.height) {
+                    onDimensionsReady(saved.width, saved.height);
+                } else {
+                    var img = new Image();
+                    img.onload = function () {
+                        onDimensionsReady(this.width, this.height);
+                    };
+                    img.src = currentPngUrl;
+                }
+            }).catch(function (err) {
+                console.warn("Failed to restore saved map:", err);
+            });
+        }
+
+        function clearCurrentMap() {
+            if (currentMapOverlay) {
+                map.removeLayer(currentMapOverlay);
+                currentMapOverlay = null;
+            }
+            if (currentPngUrl) {
+                URL.revokeObjectURL(currentPngUrl);
+                currentPngUrl = null;
+            }
+            selectedPngFile = null;
+            selectedPngName = null;
+            selectedPgwFile = null;
+            selectedPgwText = null;
+            selectedPgwName = null;
+
+            var pngInput = document.getElementById('png-input');
+            if (pngInput) pngInput.value = "";
+            var pgwInput = document.getElementById('pgw-input');
+            if (pgwInput) pgwInput.value = "";
+
+            var pngBtn = document.getElementById('png-btn');
+            if (pngBtn) pngBtn.classList.remove('loaded');
+            var pngTitle = document.getElementById('png-title');
+            if (pngTitle) pngTitle.innerText = "Select PNG Map";
+            var pngSub = document.getElementById('png-sub');
+            if (pngSub) pngSub.innerText = "No file chosen";
+
+            var pgwBtn = document.getElementById('pgw-btn');
+            if (pgwBtn) pgwBtn.classList.remove('loaded');
+            var pgwTitle = document.getElementById('pgw-title');
+            if (pgwTitle) pgwTitle.innerText = "Select PGW World";
+            var pgwSub = document.getElementById('pgw-sub');
+            if (pgwSub) pgwSub.innerText = "No file chosen";
+
+            var clearRow = document.getElementById('clear-map-row');
+            if (clearRow) clearRow.style.display = 'none';
+
+            try {
+                localStorage.removeItem('oalaska_map_view');
+            } catch (e) { }
+
+            clearMapFromIndexedDB();
         }
 
         // Compass Heading
@@ -997,94 +1246,104 @@
         }
 
         // GPS Tracking
-        function toggleTracking() {
-            var fab = document.getElementById('fab-track');
+        function startGeolocationWatch() {
+            if (!navigator.geolocation) return;
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+
             var statusCard = document.getElementById('info-card');
 
-            if (watchId) {
-                // Stop Tracking
-                if (navigator.geolocation) {
-                    navigator.geolocation.clearWatch(watchId);
+            watchId = navigator.geolocation.watchPosition(function (position) {
+                currentLat = position.coords.latitude;
+                currentLng = position.coords.longitude;
+                currentAccuracy = position.coords.accuracy;
+
+                if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
+                    if (currentHeading === null) {
+                        currentHeading = position.coords.heading;
+                    }
                 }
-                watchId = null;
-                isTracking = false;
 
-                fab.classList.remove('active');
-                statusCard.style.display = 'none';
+                updateLocationMarker();
 
-                window.removeEventListener('deviceorientation', handleOrientation, true);
-                window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+                statusCard.style.display = 'block';
+                document.getElementById('gps-lat').innerText = currentLat.toFixed(5);
+                document.getElementById('gps-lng').innerText = currentLng.toFixed(5);
+                document.getElementById('gps-acc').innerText = currentAccuracy.toFixed(1) + 'm';
+            }, function (error) {
+                console.error("GPS Watch Position Error:", error);
+                var msg = error.message;
+                if (error.code === error.PERMISSION_DENIED) {
+                    msg = "Permission denied. Please allow location access in your browser settings.";
+                }
+                alert("GPS position acquisition failed: " + msg);
 
-                if (userLocationMarker) map.removeLayer(userLocationMarker);
-                if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
-                userLocationMarker = null;
-                userAccuracyCircle = null;
+                // Reset tracking state
+                stopTracking();
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 10000
+            });
+        }
 
-                currentLat = null;
-                currentLng = null;
-                currentAccuracy = null;
-                currentHeading = null;
-                smoothedSin = null;
-                smoothedCos = null;
+        function stopTracking() {
+            if (watchId && navigator.geolocation) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+            watchId = null;
+            isTracking = false;
+
+            var fab = document.getElementById('fab-track');
+            if (fab) fab.classList.remove('active');
+            var statusCard = document.getElementById('info-card');
+            if (statusCard) statusCard.style.display = 'none';
+
+            window.removeEventListener('deviceorientation', handleOrientation, true);
+            window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+
+            if (userLocationMarker) map.removeLayer(userLocationMarker);
+            if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+            userLocationMarker = null;
+            userAccuracyCircle = null;
+
+            currentLat = null;
+            currentLng = null;
+            currentAccuracy = null;
+            currentHeading = null;
+            smoothedSin = null;
+            smoothedCos = null;
+        }
+
+        function startTracking() {
+            if (!navigator.geolocation) {
+                var isHttp = window.location.protocol === 'http:';
+                var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+                if (isHttp && !isLocal) {
+                    alert("GPS tracking failed: Web browsers block GPS access on insecure HTTP connections.\n\nPlease host this app on a secure HTTPS server (like GitHub Pages or HTTPS WordPress) to enable location features on your mobile phone.");
+                } else {
+                    alert("GPS tracking failed: Geolocation is not supported or is blocked by your browser.");
+                }
+                return;
+            }
+
+            isTracking = true;
+            initCompass();
+
+            var fab = document.getElementById('fab-track');
+            if (fab) fab.classList.add('active');
+
+            startGeolocationWatch();
+        }
+
+        function toggleTracking() {
+            if (isTracking) {
+                stopTracking();
             } else {
-                // Check if Geolocation is supported/available (restricted to HTTPS on mobile)
-                if (!navigator.geolocation) {
-                    var isHttp = window.location.protocol === 'http:';
-                    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-                    if (isHttp && !isLocal) {
-                        alert("GPS tracking failed: Web browsers block GPS access on insecure HTTP connections.\n\nPlease host this app on a secure HTTPS server (like GitHub Pages or HTTPS WordPress) to enable location features on your mobile phone.");
-                    } else {
-                        alert("GPS tracking failed: Geolocation is not supported or is blocked by your browser.");
-                    }
-                    return;
-                }
-
-                // Start Tracking
-                isTracking = true;
-                initCompass();
-
-                fab.classList.add('active');
-
-                watchId = navigator.geolocation.watchPosition(function (position) {
-                    currentLat = position.coords.latitude;
-                    currentLng = position.coords.longitude;
-                    currentAccuracy = position.coords.accuracy;
-
-                    if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-                        if (currentHeading === null) {
-                            currentHeading = position.coords.heading;
-                        }
-                    }
-
-                    updateLocationMarker();
-
-                    statusCard.style.display = 'block';
-                    document.getElementById('gps-lat').innerText = currentLat.toFixed(5);
-                    document.getElementById('gps-lng').innerText = currentLng.toFixed(5);
-                    document.getElementById('gps-acc').innerText = currentAccuracy.toFixed(1) + 'm';
-                }, function (error) {
-                    console.error("GPS Watch Position Error:", error);
-                    var msg = error.message;
-                    if (error.code === error.PERMISSION_DENIED) {
-                        msg = "Permission denied. Please allow location access in your browser settings.";
-                    }
-                    alert("GPS position acquisition failed: " + msg);
-
-                    // Reset tracking state
-                    watchId = null;
-                    isTracking = false;
-                    fab.classList.remove('active');
-                    statusCard.style.display = 'none';
-                    if (userLocationMarker) map.removeLayer(userLocationMarker);
-                    if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
-                    userLocationMarker = null;
-                    userAccuracyCircle = null;
-                }, {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 10000
-                });
+                startTracking();
             }
         }
 
@@ -1094,6 +1353,37 @@
 
             var hdgText = currentHeading !== null ? Math.round(currentHeading) + '°' : '---';
             document.getElementById('gps-hdg').innerText = hdgText;
+        }
+
+        // App lifecycle resume watchdog for mobile browsers (iOS Safari / Android Chrome)
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible' && isTracking) {
+                startGeolocationWatch();
+            }
+        });
+
+        // Save map view on move/zoom so user view is preserved across app switches
+        var saveViewTimeout = null;
+        map.on('moveend', function () {
+            if (saveViewTimeout) clearTimeout(saveViewTimeout);
+            saveViewTimeout = setTimeout(function () {
+                try {
+                    var center = map.getCenter();
+                    var zoom = map.getZoom();
+                    localStorage.setItem('oalaska_map_view', JSON.stringify({
+                        lat: center.lat,
+                        lng: center.lng,
+                        zoom: zoom
+                    }));
+                } catch (e) { }
+            }, 500);
+        });
+
+        // Automatically restore map from IndexedDB on page initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', restoreSavedMap);
+        } else {
+            restoreSavedMap();
         }
     </script>
 </body>
